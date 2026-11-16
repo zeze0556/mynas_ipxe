@@ -1,0 +1,120 @@
+#!/bin/sh
+# =============================================================================
+# nfs-bottom-overlay —— LTSP 式「只读 NFS 基础 root + 每客户端可写 overlay」
+# -----------------------------------------------------------------------------
+# 本脚本是一个 initramfs-tools 钩子（放在客户端镜像的
+# /etc/initramfs-tools/scripts/nfs-bottom/ 下，update-initramfs -u 后生效）。
+# 它在客户端启动的 initramfs 阶段、NFS root 挂载完成后、正式切换 root 之前运行，
+# 把「只读 NFS root」改造为「分层 + 持久化」的 live 系统。
+#
+# ── 它解决什么问题 ──────────────────────────────────────────────────────────
+# 纯 `root=/dev/nfs nfsroot=...,ro` 启动的客户端，所有机器共享同一份只读 root：
+#   - 任何写入（配置、日志、用户数据）要么失败（ro），要么只在内存里、重启即丢；
+#   - 多客户端无法隔离，一台改了另一台也跟着变。
+# 本脚本给「每一台客户端（按 MAC 区分）」叠加一个独立的可写层（overlay upper），
+# 写入沉淀到该 MAC 专属的 NFS 目录，重启后保留。这正是无盘启动（diskless）
+# 实现「live + 分层持久化」的标准做法（LTSP 模型）。
+#
+# ── overlay 文件系统模型（理解下面的代码前提）──────────────────────────────
+#   lowerdir  = 只读基础层（这里的 NFS 基础 root，所有客户端共享，不可改）
+#   upperdir  = 可写层（按 MAC 独立的 NFS 目录，客户端写入落在这里）
+#   workdir   = overlay 内部临时工作目录（与 upperdir 同文件系统，内核要求）
+#   merged    = 合并视图（lower ∪ upper，upper 覆盖同名文件）= 最终 rootmnt
+# 读：lower 有则直接读；写：落到 upper；删：在 upper 建 whiteout。
+#
+# ── 部署（在「live 客户端镜像」里执行一次，非每台机器）────────────────────
+#   1) cp nfs-bottom-overlay /etc/initramfs-tools/scripts/nfs-bottom/overlay-mac
+#   2) chmod +x /etc/initramfs-tools/scripts/nfs-bottom/overlay-mac
+#   3) 确保 initramfs 含 nfs 客户端模块（boot=nfs 通常会自动带，保险可加）：
+#        echo 'nfs' >> /etc/initramfs-tools/modules
+#   4) update-initramfs -u        # 重新生成 initramfs，使钩子生效
+# 之后所有挂载该共享 root 的客户端都会自动获得 per-client overlay 行为。
+# （这是「一次性镜像构建」，不是每次启动的运行时改造。）
+#
+# ── 服务端 NFS 导出（前提，本程序不负责，由你的 NFS 服务器提供）────────────
+#   需导出两个路径：
+#     a) <nfs_root>  ：只读基础 root（如 debootstrap 出的 Ubuntu root），ro 导出
+#     b) <nfs_upper> ：overlay 基目录，rw 导出
+#   并且服务端要为每个客户端预建 <nfs_upper>/<mac>/ 目录并赋予该客户端可写权限
+#   （MAC 用 '-' 分隔，如 52-54-00-12-34-56，与脚本内一致）。
+#
+# ── iPXE 侧（public-nfs 模板）需传的内核参数 ─────────────────────────────
+#   root=/dev/nfs nfsroot=<nfs_root>,ro ip=dhcp ipxe_overlaybase=<nfs_upper>
+#   其中 ipxe_overlaybase 就是上面的 <nfs_upper>，脚本据此定位本机 overlay 目录。
+#
+# ── 与「文件注入」机制的关系（重要边界）────────────────────────────────────
+#   本脚本只做「分层挂载」，不承担文件注入。项目现有的文件注入（/api/injections）
+#   是绑定 ISO、经 /c/<mac>/<iso>/<path> 的 HTTP 树服务的；NFS root 直接挂载、
+#   不访问 /c/，因此注入对 NFS 客户端不可见。若要让 NFS 客户端也吃到注入文件，
+#   需另行桥接（不在本脚本职责内）。
+#
+# ── 故障回退 ───────────────────────────────────────────────────────────────
+#   若 per-client overlay 目录挂不上（权限/网络/目录未预建），脚本回退到 tmpfs
+#   作为 upper —— 此时系统仍可启动，但写入仅存于内存、重启即丢（volatile）。
+# =============================================================================
+
+# initramfs-tools 脚本协议：被以 `prereqs` 参数调用时需输出依赖的脚本名。
+# 本钩子无前置依赖，输出为空即可。
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "$1" in
+  prereqs) prereqs; exit 0 ;;
+esac
+
+# 仅在确实是 NFS 根、且内核传了 ipxe_overlaybase 时才生效；否则直接退出，
+# 避免影响非 NFS 启动（如本地盘、ISO sanboot）。
+if [ "${boot?}" != "nfs" ] && ! grep -q 'root=/dev/nfs' /proc/cmdline 2>/dev/null; then
+  exit 0
+fi
+# 从内核命令行提取 iPXE 传来的 overlay 基路径。
+OVERLAYBASE=$(cat /proc/cmdline | tr ' ' '\n' | sed -n 's/^ipxe_overlaybase=//p')
+[ -z "$OVERLAYBASE" ] && exit 0
+
+# 取客户端 MAC：遍历 /sys/class/net，跳过 lo，取首个「地址非空且非全 0」的网卡。
+# 全 0 地址常见于未连线的虚拟网卡，需排除以免误用。
+# MAC 中的 ':' 改为 '-'：NFS 路径与 shell 里 ':' 易引发歧义/解析问题，'-' 更安全。
+MAC=""
+for d in /sys/class/net/*; do
+  [ "$(basename "$d")" = "lo" ] && continue
+  a=$(cat "$d/address" 2>/dev/null)
+  if [ -n "$a" ] && [ "$a" != "00:00:00:00:00:00" ]; then
+    MAC=$(echo "$a" | tr ':' '-')
+    break
+  fi
+done
+[ -z "$MAC" ] && echo "overlay-mac: cannot determine MAC, skip" && exit 0
+
+# 本机专属的 overlay upper 路径：基目录 + MAC。
+UPPER="${OVERLAYBASE}/${MAC}"
+
+# 准备 overlay 所需的挂载点：
+#   /tmp/ovl/upper = 可写层（最终挂上 NFS 目录，或回退 tmpfs）
+#   /tmp/ovl/work  = overlay 内部工作目录（内核硬性要求，与 upper 同 FS）
+mkdir -p /tmp/ovl/upper /tmp/ovl/work
+
+# 挂 overlay upper（可写 NFS）：
+#   nolock   —— initramfs 阶段通常无 portmap/rpcbind，关掉锁避免卡死
+#   proto=tcp,vers=3 —— TCP 传输、NFSv3（兼容性最好；NFSv4 需更多依赖）
+# 失败则回退 tmpfs：系统能起，但写入不持久（volatile），仅作兜底不影响启动。
+if ! mount -t nfs "${UPPER}" /tmp/ovl/upper -o rw,nolock,proto=tcp,vers=3 2>/dev/null; then
+  echo "overlay-mac: mount ${UPPER} failed, fall back to tmpfs (volatile)"
+  mount -t tmpfs tmpfs /tmp/ovl/upper
+  mkdir -p /tmp/ovl/upper/${MAC}
+  UPPER=/tmp/ovl/upper/${MAC}
+fi
+
+# 分层核心：把当前的 NFS root（rootmnt）下移为 lower，再把 overlay 合并视图
+# 挂回 rootmnt，后续 pivot_root/switch_root 看到的就是「分层后」的根。
+#   mount --move rootmnt /mnt/root  ：腾出 rootmnt 位置，原 NFS 挂载移到 /mnt/root
+#   mount -t overlay ... lowerdir=/mnt/root,upperdir=...,workdir=... rootmnt
+#     —— 合并视图挂到 rootmnt，覆盖原位置。
+mkdir -p /mnt/root
+mount --move "${rootmnt}" /mnt/root
+if mount -t overlay overlay -o lowerdir=/mnt/root,upperdir=/tmp/ovl/upper,workdir=/tmp/ovl/work "${rootmnt}"; then
+  echo "overlay-mac: activated per-client overlay for ${MAC}"
+else
+  # overlay 失败则还原：把原 NFS root 移回 rootmnt，退化为纯只读 NFS root 启动。
+  echo "overlay-mac: overlay mount failed, restore plain root"
+  mount --move /mnt/root "${rootmnt}"
+fi
+exit 0

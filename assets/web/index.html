@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh" data-page-node-id="5gEXW4I2GsU8oN5V2qJ5k1">
+<head data-page-node-id="KDXixJBN5PAHp2D6xbHCbZ">
+<meta charset="utf-8" data-page-node-id="KXUODgPAm4rdda844j2Pmz">
+<title>iPXE Server 管理</title>
+<style>
+  body { font-family: system-ui, "Microsoft YaHei", sans-serif; margin: 0; background: #f5f6f8; color: #222; }
+  header { background: #1f2937; color: #fff; padding: 12px 20px; font-weight: 600; }
+  .wrap { max-width: 1100px; margin: 16px auto; padding: 0 16px; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; color: #374151; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+  th { color: #6b7280; font-weight: 600; }
+  input, select, textarea { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
+  button { background: #2563eb; color: #fff; border: 0; border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 13px; }
+  button:hover { background: #1d4ed8; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .row > div { flex: 1; min-width: 150px; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow: auto; font-size: 12px; }
+  .muted { color: #9ca3af; font-size: 12px; }
+  .tabs button { background: #e5e7eb; color: #374151; margin-right: 6px; }
+  .tabs button.active { background: #2563eb; color: #fff; }
+</style>
+</head>
+<body data-page-node-id="UZti1ULHRuHBJuADANW3tA">
+<header data-page-node-id="WdFDivDYSsGUf9wgVT0EK8">iPXE Server · 管理控制台</header>
+<div class="wrap" data-page-node-id="5NS4cyCTs9sQrzByQQ97wt">
+  <div class="card" data-page-node-id="qy2dOk0PyuNLu95pAucJZo">
+    <div class="tabs" id="tabs" data-page-node-id="YGAjZqBJGVwQZZ4GsicRhv">
+      <button data-t="users" class="active" data-page-node-id="pTGCm3oyLx2KaWta9MCWvK">用户</button>
+      <button data-t="hosts" data-page-node-id="Suzy2wJWb1u9uNLHGjeUjj">主机(MAC)</button>
+      <button data-t="templates" data-page-node-id="SBlhHQYcn3ScSv9XTbEpiP">模板</button>
+      <button data-t="isos" data-page-node-id="EuFlCZBWuV5E8ZQliL252G">ISO</button>
+      <button data-t="injections" data-page-node-id="kIJWTFD6VaHYEg9qnCTg1p">注入</button>
+    </div>
+  </div>
+
+  <div class="card" id="panel-users" data-page-node-id="1EsYdZ1ryalOi36FP1dv14">
+    <h2 data-page-node-id="eADgNUO6FF0GZak6ARDlZq">用户（一个用户可绑定多台主机）</h2>
+    <div class="row" data-page-node-id="7124lGW7KzMEm6jRnCnYX9"><div data-page-node-id="7fVWS5CXrqoCyGHVLFgeTH"><input id="u_name" placeholder="用户名" data-page-node-id="2Vi8bwTy0OVnq0bP6XFAlZ"></div><div data-page-node-id="uKjA8nXPKZtdkVPJBMjzeE"><input id="u_token" placeholder="token(留空自动生成)" data-page-node-id="PneDam45YV4zGPj1GE6TB2"></div><div data-page-node-id="YXVjxfllMvzZeZiygBoS95"><button onclick="addUser()" data-page-node-id="gLM4DUXqhPllhHM4FrEST5">添加</button></div></div>
+    <table id="t-users" data-page-node-id="CbHgSYfiKNUew3sInKXXcX"><thead data-page-node-id="loyEZwWHCgqGwQdYpVghbh"><tr data-page-node-id="KefZC6SBBZliEclFbsP3wZ"><th data-page-node-id="UiPHlAnkObfGlNuNLQACcX">ID</th><th data-page-node-id="FRqZCDMF1NquMEn6hXmNUK">名称</th><th data-page-node-id="lV7AEd55aRZXGQEEHFTuk6">Token</th><th data-page-node-id="ZLuxgMqVoZuH55J6md58UQ"></th></tr></thead><tbody data-page-node-id="HXGdacrdF4HZiMmgGDk1oC"></tbody></table>
+  </div>
+
+  <div class="card" id="panel-hosts" style="display:none" data-page-node-id="aveALx0xIJKBxuruTHTyLU">
+    <h2 data-page-node-id="58NxFIfPkYJa9HoqpHnsaB">主机 ↔ MAC 绑定</h2>
+    <div class="row" data-page-node-id="ffOzvusZVhC3Advf3vXz0r">
+      <div data-page-node-id="SM69q7CBCJFtkYnpBNioK0"><input id="h_mac" placeholder="MAC aa:bb:cc:dd:ee:ff" data-page-node-id="xYokYLFuXP1pNJjH94sYJK"></div>
+      <div data-page-node-id="Jg27WIpxMvikTqvd3nKMKl"><input id="h_name" placeholder="主机名" data-page-node-id="hoJYvWQDn1t9DOBGmJ1fZn"></div>
+      <div data-page-node-id="xVpJd3Tm73MFHGlFfVWzRN"><select id="h_user" data-page-node-id="etXGZiqAlsSrsiZFgCG9XD"><option value="">（选择用户）</option></select></div>
+      <div data-page-node-id="0iNyp0DmA2w1h9Qljbn1So"><input id="h_vars" placeholder='vars JSON {"hostname":"pc1"}' data-page-node-id="oOTZJeuPbm22tHRdGdfNnl"></div>
+      <div data-page-node-id="bootmenuChk"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="h_bootmenu"> 启动到菜单（/boot 重定向 /menu）</label></div>
+      <div data-page-node-id="rry8rs2T5Ue0nAfJBH1SKV"><button id="h_submit" onclick="submitHost()" data-page-node-id="wTAYMRYadMCKjGPEOF0x7d">绑定</button></div>
+    </div>
+    <table id="t-hosts" data-page-node-id="nc1SeJVvwKz72XhHcwJ3wX"><thead data-page-node-id="rVhaAa9qJBQcuCKJGGIx2L"><tr data-page-node-id="rEvCSTL5Q5tcEbS96zhqMe"><th data-page-node-id="JhuRSalaHw0mHH4HS74fQ5">ID</th><th data-page-node-id="NZpPPA921uuVYFFGVuCq9y">MAC</th><th data-page-node-id="FW54R3PXqLeYHnggUl2kMl">名称</th><th data-page-node-id="MZMkmYRwZ8d03XnUi2Ii08">User</th><th data-page-node-id="N6Dvn5nMWwXkMJKX3zTu5L">Vars</th><th>菜单</th><th data-page-node-id="159mqvQ1e9IDOV7UbD6S6h"></th></tr></thead><tbody data-page-node-id="Rum96BDwgo2xdAaaQ7DaY9"></tbody></table>
+  </div>
+
+  <div class="card" id="panel-templates" style="display:none" data-page-node-id="4Gdbvy2v23hobWAWRGLGIF">
+    <h2 data-page-node-id="f9i15Xq7K3Og0flkvFdqE4">启动模板（public 默认 / user / host 覆盖）</h2>
+    <div class="row" data-page-node-id="Neb3xDicrNz75Cewx7toi6">
+      <div data-page-node-id="xm6vpPPZIAYoHt4Mw0fvcS"><input id="t_name" placeholder="模板名" data-page-node-id="Rn3KpcB5zSRAkLX7vRPdKF"></div>
+      <div data-page-node-id="MKP8FBy0laKBHtfFyK8V1j"><select id="t_scope" data-page-node-id="DGEpIZ8QEREHJxnEcTkCTM"><option value="public" data-page-node-id="9AGJoIuO4DgmEALA3OWBXb">public</option><option value="user" data-page-node-id="jPp0witkuij6NZju3Rv2GM">user</option><option value="host" data-page-node-id="smTdJE4rZRBhzHnwhaicaF">host</option></select></div>
+      <div data-page-node-id="2rwWUDI5kDGA2Td4APj1U7"><select id="t_owner" data-page-node-id="7Q886pxTL9SA2wnaPIcIBw"><option value="">（public 无需选择）</option></select></div>
+      <div data-page-node-id="0SsV6VQG93VKEceZ1cAV1B"><select id="t_kind" data-page-node-id="f3EFC0XtbEzp1T8KhqVWZZ"><option value="linux" data-page-node-id="3zifUNTHJcEnsA9Eh1H0ng">linux</option><option value="windows" data-page-node-id="ALf3Nq2KnfKMItwGwdTaOR">windows</option><option value="raw" data-page-node-id="HTNjAAfkHKBSJCJ594eTzk">raw</option><option value="wim" data-page-node-id="wim0000000000000000000000">wim</option><option value="iscsi" data-page-node-id="iscsi0000000000000000000001">iscsi（sanhook 外部 LUN 作持久盘）</option><option value="nfs" data-page-node-id="nfs00000000000000000000002">nfs（ro root + 每客户端 overlay）</option></select></div>
+      <div data-page-node-id="hEdIEf03OuIXDkDrhqUPgq"><select id="t_isoid" data-page-node-id="0wJCxCKuZzHnyQHJwEy0pr"><option value="">（不绑定 ISO）</option></select></div>
+    </div>
+    <div class="row" data-page-node-id="netFields" style="margin-top:8px">
+      <div data-page-node-id="n1"><input id="t_iscsi" placeholder="Target IQN 的 URI，如 iscsi:192.168.1.10::::iqn.2024-01.com.example:nas:disk01（IQN 后不要再加 :lunN）" data-page-node-id="n1i"></div>
+      <div data-page-node-id="n4"><input id="t_initiator" placeholder="Initiator IQN（客户端名），须与 targetcli acls/ 条目一致" data-page-node-id="n4i"></div>
+      <div data-page-node-id="n2"><input id="t_nfsroot" placeholder="NFS ro root: 192.168.1.10:/srv/nfs/live" data-page-node-id="n2i"></div>
+      <div data-page-node-id="n3"><input id="t_nfsupper" placeholder="NFS overlay 基础: 192.168.1.10:/srv/nfs/overlay" data-page-node-id="n3i"></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div><select id="tpl_example"></select></div>
+      <div style="flex:0 0 auto"><button type="button" onclick="applyExample($('tpl_example').value)" style="background:#6b7280">套用示例</button></div>
+    </div>
+    <div class="muted" id="tpl_hint" style="margin:6px 0 10px;line-height:1.6">两个 IQN 不要混淆：iSCSI URI 末段是服务端的 Target IQN；Initiator IQN 是客户端 iPXE 的名字，必须与 targetcli 的 acls/ 条目一致。选一个示例可一键填入脚本与字段。</div>
+    <textarea id="t_body" rows="8" placeholder="#!ipxe&#10;kernel ${base}/live/vmlinuz boot=live components fetch=${base}/live/filesystem.squashfs ..."></textarea>
+    <div style="margin-top:8px" data-page-node-id="rXrH0oGTzQIHfMtzrP7owZ"><button id="tpl_submit" onclick="submitTemplate()" data-page-node-id="xHVWgm4vlamn2qQ0XniqLX">添加模板</button> <button id="tpl_cancel" onclick="cancelEdit()" style="display:none;background:#6b7280">取消编辑</button></div>
+    <div class="muted" style="margin-top:10px">模板脚本预览（点击列表「预览」查看，编辑时自动回填上方表单）</div>
+    <pre id="tpl_preview" style="min-height:60px"># 尚未选择模板</pre>
+    <table id="t-templates" data-page-node-id="Pt4wQqjoGe6kdQQJQYsNB5"><thead data-page-node-id="rI8NJxES2EBIx77fvp9Hf0"><tr data-page-node-id="Jw1DTKoBWbzOnKBAyHCbxO"><th data-page-node-id="5lScRkHfNZ8UdV9sBmcVW4">ID</th><th data-page-node-id="XZ22fEMrmTKfoUSuuOJopP">Name</th><th data-page-node-id="jgBieQoE5VtnFH5Y09PFIt">Scope</th><th data-page-node-id="uCClzTODjCwHXfYIHyDr9r">Kind</th><th data-page-node-id="2NkD81Kh5kz680dc4cbET4">ISO</th><th data-page-node-id="iscsiCol">Target IQN / URI</th><th data-page-node-id="initCol">Initiator IQN</th><th data-page-node-id="nfsCol">NFS root</th><th data-page-node-id="g4fwbRhGhgGhARJxxAp6n7"></th></tr></thead><tbody data-page-node-id="DHEjFi9DHxLr4WRfT1gVWG"></tbody></table>
+  </div>
+
+  <div class="card" id="panel-isos" style="display:none" data-page-node-id="DEdA15vQHSMMUFwmDzfruX">
+    <h2 data-page-node-id="WXgpW5YSMDAk7162fIbSKQ">镜像（ISO 解包；IMG/VHD/WIM 原生启动，支持动态注入）</h2>
+    <div class="row" data-page-node-id="PPtvytYWgdkztnzlRIGpV9"><div data-page-node-id="AoAJ30EpGGmK8jQb1mcdXW"><input id="iso_file" type="file" data-page-node-id="UROfWTN69NkMh0LiC0q2c9"></div><div data-page-node-id="d4Q6h0leGDcuuFwnbhXhzI"><button onclick="importISO()" data-page-node-id="JZYa52VGHSyk82Uqz6KhiB">上传导入</button></div></div>
+    <div class="row" style="margin-top:8px"><div><input id="iso_path" placeholder="服务器本地全路径，如 /srv/ipxe/data/isos/win10.iso"></div><div style="flex:0 0 auto"><button onclick="importISOPath()">按路径导入</button></div></div>
+    <div class="muted" id="iso_status" style="margin-top:6px">支持 ISO / IMG / VHD(X) / WIM；路径导入读取的是运行 ipxe-server 的服务器磁盘。同名文件再次导入会<b>更新已有记录</b>（ID 与模板绑定不变），不新增行；文件被替换后可直接点「重新导入」。删除默认只删数据库记录。</div>
+    <progress id="iso_progress" value="0" max="100" style="width:100%;display:none;margin-top:6px"></progress>
+    <table id="t-isos" data-page-node-id="0Qn9JApXSufdC5xUmjagaz"><thead data-page-node-id="sTsxHC6DTc25KgQIm9m6zv"><tr data-page-node-id="g6ODvGSPo2dYZVJVzcGoBQ"><th data-page-node-id="SP8SlglveAHoYhylpGPs4o">ID</th><th data-page-node-id="qC3p6CnEIlQQo7CoNmzOCP">名称</th><th data-page-node-id="acBwzsIbVv1efzqRR1Ezvf">文件</th><th data-page-node-id="qOgv9hiE3zLk5Th86ebKvF">大小</th><th data-page-node-id="9uCjQC6LJdnpBwWk3dDOfa">Checksum</th><th>操作</th></tr></thead><tbody data-page-node-id="5TGZdSs0EAPjoCykNXuawf"></tbody></table>
+  </div>
+
+  <div class="card" id="panel-injections" style="display:none" data-page-node-id="lYoCBiGAa7QoD2c66jYirj">
+    <h2 data-page-node-id="0PGTdcpg2FD7ia5cjWtPKo">文件注入（替换/注入镜像中的文件）</h2>
+    <div class="row" data-page-node-id="cGJxMDWK3X9nqZBHlTursB">
+      <div data-page-node-id="4c2v6rGwcuGyk2C3DtSr42"><input id="inj_isoid" placeholder="iso_id" type="number" data-page-node-id="HLhp1M3udEIswLYBgh0tms"></div>
+      <div data-page-node-id="4tAgDHACFcQtcCHxHJrq6Y"><select id="inj_scope" data-page-node-id="U6WLjqlh4a756jCad9gplz"><option value="global" data-page-node-id="eLHvBjgbX8REMozMA68gRM">global</option><option value="user" data-page-node-id="OpjlI1AVSlNh5xSkbMX0ra">user</option><option value="host" data-page-node-id="cT47qHtlWrrrg9GldROfVp">host</option></select></div>
+      <div data-page-node-id="BMA1SvElQ1UbOXN7eKMHpX"><input id="inj_owner" placeholder="owner_id" type="number" data-page-node-id="H7LaZ9Qy6s4sC1lsXJvc3r"></div>
+      <div data-page-node-id="heoCXa0qgT55q5ZysOuUB1"><input id="inj_path" placeholder="镜像内路径 /autounattend.xml" data-page-node-id="qoWmmO2L8aij1FXCMAxfEG"></div>
+      <div data-page-node-id="6klm9Gs35NJ8C47f5jXOsY"><input id="inj_file" type="file" data-page-node-id="fBNhOxvpqBjDslELDOBbKC"></div>
+      <div data-page-node-id="F0TM6jJhDHOKi0ZnTWWTwk"><button onclick="addInjection()" data-page-node-id="oJScVVMez3SBm6GGT5gjel">注入</button></div>
+    </div>
+    <table id="t-inj" data-page-node-id="y3sRe2AnxaArD3zbBCNPV7"><thead data-page-node-id="BMPJZWQkuCozDCkNvJqnrL"><tr data-page-node-id="7BpidcdMrWrXRmBW7vOQQF"><th data-page-node-id="21dcykAuninZRPB7At38NG">ID</th><th data-page-node-id="duRTXrX20pJhagjcFHX3nJ">ISO</th><th data-page-node-id="5pZQE9g5i072l7UH2CGn1s">Scope</th><th data-page-node-id="s4EpwNapNNeSyWPo9aq1Ga">Owner</th><th data-page-node-id="jR7rwW11nhTB6uJ0X9FC3z">路径</th><th data-page-node-id="tVsx8TP4Keg4bCWB5puoKM"></th></tr></thead><tbody data-page-node-id="CkrRPbMA3sLtjIAwxn3n7V"></tbody></table>
+  </div>
+
+  <div class="card" data-page-node-id="qdHWBLN7167BjAzTKrpsuz">
+    <h2 data-page-node-id="rxhmpKtl9f63oIq3k0VtyY">启动脚本预览</h2>
+    <div class="row" data-page-node-id="qrbMMa8cmNZMdhh4JuQxHV"><div data-page-node-id="rDr10RxEAjphQRvdKiQ7wa"><input id="pv_mac" placeholder="MAC（留空用 public）" data-page-node-id="yR7L181SaqcjJwIupLnAh4"></div><div data-page-node-id="5Xq81hxrEDZ10PBL01tD0J"><select id="pv_kind" data-page-node-id="hoVPDODENxKEyGH9FFsHRf"><option value="linux">linux</option><option value="windows">windows</option><option value="raw">raw</option><option value="wim">wim</option><option value="iscsi">iscsi</option><option value="nfs">nfs</option></select></div><div><select id="pv_template"><option value="">自动（按 MAC + 类型匹配）</option></select></div><div data-page-node-id="l5LsHJ9jsodytQGbH38K9c"><button id="pv_btn" onclick="preview()" data-page-node-id="dMaE7heRQcCFA9TB1MQea4">预览</button></div></div>
+    <pre id="pv_out" data-page-node-id="McrrAtfwMekR2v4d4wwwHi"># 点击预览查看渲染后的 iPXE 脚本</pre>
+  </div>
+</div>
+
+<script>
+const api = (p, opt) => fetch('/api'+p, opt).then(r => r.json());
+const $ = id => document.getElementById(id);
+function fmtMac(m){ return (m||'').toLowerCase().replace(/-/g,':'); }
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function opt(value, label){ return `<option value="${esc(value)}">${esc(label)}</option>`; }
+let usersCache = [], hostsCache = [], templatesCache = [], editingId = null;
+const DEFAULT_TPL_HINT = '两个 IQN 不要混淆：iSCSI URI 末段是服务端的 Target IQN；Initiator IQN 是客户端 iPXE 的名字，必须与 targetcli 的 acls/ 条目一致。选一个示例可一键填入脚本与字段。';
+
+// 常见场景示例：选中后一键填入 kind / 字段 / body，避免只有熟悉 iPXE 的人才能配模板。
+// 注意：body 里的 ${base} 是 iPXE 变量，不是 JS 模板字符串，故用单引号数组拼接。
+const TEMPLATE_EXAMPLES = [
+  {
+    key: 'debian-live-http', label: '① Debian Live 网络启动（live/ + fetch，推荐）', kind: 'linux',
+    iscsi: '', initiator: '', nfsroot: '', nfsupper: '',
+    body: [
+      '#!ipxe',
+      'echo Booting {{.ISOName}} for {{.HostName}} ({{.MAC}})',
+      'set base {{.ContentURL}}',
+      'kernel ${base}/live/vmlinuz boot=live components fetch=${base}/live/filesystem.squashfs ip=dhcp quiet ---',
+      'initrd ${base}/live/initrd.img',
+      'boot'
+    ].join('\n'),
+    hint: 'Debian live-boot 的 filesystem.squashfs 必须显式用 fetch= 从 HTTP 下载。只加载 kernel+initrd 而不给 fetch/netboot 时，live-boot 会扫描本地块设备找不到介质，报 “Unable to find a medium containing a live file system” 并落到 initramfs shell。ISO 自带 isolinux/live.cfg 的参数只适用于本地 U 盘/光盘启动。内存建议 ≥ 1.5GiB（squashfs 约 942MB）。'
+  },
+  {
+    key: 'debian-live-iscsi', label: '② Debian Live + iSCSI 持久盘（sanhook）', kind: 'iscsi',
+    iscsi: 'iscsi:192.168.1.10::::iqn.2024-01.com.example:nas:disk01',
+    initiator: 'iqn.2024-01.com.example:nas:disk01:disk01', nfsroot: '', nfsupper: '',
+    body: [
+      '#!ipxe',
+      'echo Booting {{.ISOName}} for {{.HostName}} with iSCSI persistence ({{.MAC}})',
+      'set base {{.ContentURL}}',
+      'kernel ${base}/live/vmlinuz boot=live components fetch=${base}/live/filesystem.squashfs ip=dhcp persistence persistence-label=mynas ---',
+      'initrd ${base}/live/initrd.img',
+      'set initiator-iqn {{.InitiatorIQN}}',
+      'sanhook --drive 0x80 {{.ISCSITarget}}',
+      'boot'
+    ].join('\n'),
+    hint: '两个 IQN 必须分清：URI 末段是服务端 Target IQN（targetcli /iscsi 下的 target 名，如 iqn.2024-01.com.example:nas:disk01，后面不要再拼 :lunN，更不要把 ACL 条目名贴上去）；Initiator IQN 是客户端 iPXE 的名字，必须与 targetcli 的 acls/ 条目完全一致，例如 targetcli /iscsi/iqn.2024-01.com.example:nas:disk01/tpg1/acls create iqn.2024-01.com.example:nas:disk01:disk01。no-auth 只表示不做 CHAP，不等于免 ACL。持久盘需 ext4 标签 mynas + 根目录 persistence.conf（内容 / union）；sanhook 只写 iBFT，Linux 起来后还需 iscsi_ibft / iscsistart 接管。'
+  },
+  {
+    key: 'ubuntu-casper', label: '③ Ubuntu/Casper 布局（casper/）', kind: 'linux',
+    iscsi: '', initiator: '', nfsroot: '', nfsupper: '',
+    body: [
+      '#!ipxe',
+      'echo Booting {{.ISOName}} for {{.HostName}} ({{.MAC}})',
+      'set base {{.ContentURL}}',
+      'kernel ${base}/casper/vmlinuz boot=casper ip=dhcp ---',
+      'initrd ${base}/casper/initrd',
+      'boot'
+    ].join('\n'),
+    hint: 'Ubuntu 风格 ISO 用 casper/ 目录与 boot=casper；Debian live 用 live/ 目录与 boot=live。选错目录会导致 kernel 404。先确认已导入 ISO 里实际是 live/ 还是 casper/。'
+  },
+  {
+    key: 'raw-iso', label: '④ 原生 ISO / IMG（sanboot）', kind: 'raw',
+    iscsi: '', initiator: '', nfsroot: '', nfsupper: '',
+    body: [
+      '#!ipxe',
+      'echo Booting raw ISO {{.ISOName}}',
+      'sanboot {{.RawURL}}'
+    ].join('\n'),
+    hint: '把整个镜像作为 SAN 设备启动，不解包。适用于 IMG/VHD/安装 ISO，依赖客户端 BIOS/UEFI 的 int13 支持。'
+  },
+  {
+    key: 'winpe-wimboot', label: '⑤ WinPE / WIM（wimboot）', kind: 'wim',
+    iscsi: '', initiator: '', nfsroot: '', nfsupper: '',
+    body: [
+      '#!ipxe',
+      'echo Booting WIM {{.ISOName}} for {{.HostName}}',
+      'kernel {{.PeURL}}wimboot',
+      'initrd {{.PeURL}}bootmgr.exe      bootmgr.exe',
+      'initrd {{.PeURL}}boot/bcd         bcd',
+      'initrd {{.PeURL}}boot/boot.sdi    boot.sdi',
+      'initrd {{.RawURL}}                boot.wim',
+      'boot'
+    ].join('\n'),
+    hint: '需要 data/pe 目录已放置 wimboot / bootmgr.exe / bcd / boot.sdi，并把 .wim 作为镜像记录导入（走 /r/ 原生流）。当前生产 data/pe 为空，此分支暂不可用。'
+  },
+  {
+    key: 'nfs-root', label: '⑥ NFS ro root + 每客户端 overlay', kind: 'nfs',
+    iscsi: '', initiator: '',
+    nfsroot: '192.168.1.10:/srv/nfs/live', nfsupper: '192.168.1.10:/srv/nfs/overlay',
+    body: [
+      '#!ipxe',
+      'echo Booting NFS live root for {{.HostName}} ({{.MAC}})',
+      'set base {{.ContentURL}}',
+      'kernel ${base}/casper/vmlinuz root=/dev/nfs nfsroot={{.NFSRoot}},ro ip=dhcp ipxe_overlaybase={{.NFSUpper}} ---',
+      'initrd ${base}/casper/initrd',
+      'boot'
+    ].join('\n'),
+    hint: 'root 走只读 NFS 导出，客户端 initramfs 需配套脚本（examples/nfs-bottom-overlay）按 MAC 挂每客户端 overlay 作 upper。导出路径按实际环境调整；kernel/initrd 目录按 ISO 布局选 live/ 或 casper/。'
+  }
+];
+function initExampleSelect(){
+  const el = $('tpl_example');
+  el.innerHTML = opt('', '（选择示例，一键填入 body 与字段）') + TEMPLATE_EXAMPLES.map(x => opt(x.key, x.label)).join('');
+  el.onchange = () => applyExample(el.value);
+}
+function applyExample(key){
+  const e = TEMPLATE_EXAMPLES.find(x => x.key === key);
+  if (!e) { $('tpl_hint').textContent = DEFAULT_TPL_HINT; return; }
+  $('t_kind').value = e.kind;
+  $('t_iscsi').value = e.iscsi || '';
+  $('t_initiator').value = e.initiator || '';
+  $('t_nfsroot').value = e.nfsroot || '';
+  $('t_nfsupper').value = e.nfsupper || '';
+  $('t_body').value = e.body;
+  $('tpl_preview').textContent = e.body;
+  $('tpl_hint').textContent = e.hint;
+}
+// 填了 Initiator IQN 却没写 set initiator-iqn 时，可见地补一行（写回 textarea，不做隐式服务端注入）。
+function ensureInitiatorLine(p){
+  const body = p.body || '';
+  if (/^\s*set\s+initiator-iqn\b/im.test(body)) return null;
+  const lines = body.split('\n');
+  let idx = lines.findIndex(l => /^\s*sanhook\b/.test(l));
+  if (idx < 0) idx = lines.findIndex(l => /^\s*boot\b/.test(l));
+  if (idx < 0) idx = lines.length;
+  const line = 'set initiator-iqn {{.InitiatorIQN}}';
+  lines.splice(idx, 0, line);
+  p.body = lines.join('\n');
+  $('t_body').value = p.body;
+  return line;
+}
+
+function setSelect(el, items, placeholder, label){
+  const prev = el.value;
+  el.innerHTML = opt('', placeholder) + items.map(x => opt(x.id, label(x))).join('');
+  if ([...el.options].some(o => o.value === prev)) el.value = prev;
+}
+function userLabel(u){ return `#${u.id} ${u.name}`; }
+function hostLabel(h){ return `#${h.id} ${h.name || h.mac} (${h.mac})`; }
+function fill(tid, rows, cols, act, fmt){
+  const tb = document.querySelector('#'+tid+' tbody');
+  tb.innerHTML = rows.map(r => '<tr>'+cols.map(c=>`<td>${fmt&&fmt[c]?fmt[c](r[c],r):(r[c]??'')}</td>`).join('')+(act?`<td>${act(r)}</td>`:'')+'</tr>').join('');
+}
+function del(t, id){ if(confirm('确认删除?')) api('/'+t+'?id='+id,{method:'DELETE'}).then(loadAll); }
+
+function refreshOwnerSelect(){
+  const scope = $('t_scope').value, el = $('t_owner');
+  if (scope === 'public'){
+    el.innerHTML = opt('', '（public 无需选择）'); el.disabled = true; return;
+  }
+  el.disabled = false;
+  if (scope === 'user') setSelect(el, usersCache, '（选择用户）', userLabel);
+  else setSelect(el, hostsCache, '（选择主机）', hostLabel);
+}
+function refreshTemplateSelect(){
+  const el = $('pv_template'), prev = el.value;
+  el.innerHTML = opt('', '自动（按 MAC + 类型匹配）') + templatesCache.map(t => opt(t.name, `#${t.id} ${t.name} [${t.scope}/${t.kind}]`)).join('');
+  if ([...el.options].some(o => o.value === prev)) el.value = prev;
+}
+
+async function loadAll(){
+  const u = await api('/users'); usersCache = Array.isArray(u) ? u : [];
+  fill('t-users', usersCache, ['id','name','token'], r => `<button onclick="del('users',${r.id})">删</button>`);
+  const h = await api('/hosts'); hostsCache = Array.isArray(h) ? h : [];
+  fill('t-hosts', hostsCache, ['id','mac','name','user_id','vars','boot_to_menu'], r => `<button onclick="editHost(${r.id})">编辑</button> <button onclick="toggleMenu(${r.id})">切换菜单</button> <button onclick="del('hosts',${r.id})">删</button>`, {vars:(v)=> v ? (String(v).length>24 ? String(v).slice(0,24)+'…' : v) : '', boot_to_menu:(v)=> v ? '✅ 菜单' : '↪ 直启'});
+  const i = await api('/isos'), isos = Array.isArray(i) ? i : [], isoMap = {};
+  isos.forEach(x => isoMap[x.id] = x.name);
+  fill('t-isos', isos, ['id','name','filename','size','checksum'],
+    r => `<button onclick="refreshISO(${r.id})">重新导入</button> <button onclick="delISO(${r.id})">删</button>`,
+    {checksum:(v) => `<span title="${v||''}">${(v||'').slice(0,12)}</span>`,
+     size:(v) => v==null ? '' : (v/1048576).toFixed(1)+' MB'});
+  setSelect($('t_isoid'), isos, '（不绑定 ISO）', x => `${x.name} (#${x.id})`);
+  setSelect($('h_user'), usersCache, '（选择用户）', userLabel);
+  const t = await api('/templates'); templatesCache = Array.isArray(t) ? t : [];
+  fill('t-templates', templatesCache, ['id','name','scope','kind','iso_id','iscsi_target','initiator_iqn','nfs_root'],
+    r => `<button onclick="previewTemplate(${r.id})">预览</button> <button onclick="editTemplate(${r.id})">编辑</button> <button onclick="del('templates',${r.id})">删</button>`,
+    {iso_id:v => isoMap[v] ?? '(未绑定)', iscsi_target:v => v || '', initiator_iqn:v => v || '', nfs_root:v => v || ''});
+  refreshOwnerSelect(); refreshTemplateSelect();
+  const j = await api('/injections');
+  fill('t-inj', Array.isArray(j) ? j : [], ['id','iso_id','scope','owner_id','image_path'], r => `<button onclick="del('injections',${r.id})">删</button>`);
+}
+
+function toggleMenu(id){
+  const h = hostsCache.find(x=>x.id===id); if(!h) return;
+  h.boot_to_menu = !h.boot_to_menu;
+  api('/hosts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:h.id,mac:h.mac,name:h.name,user_id:h.user_id,vars:h.vars||'{}',boot_to_menu:h.boot_to_menu})}).then(loadAll);
+}
+let editingHostId = null;
+function editHost(id){
+  const h = hostsCache.find(x=>x.id===id); if(!h) return;
+  editingHostId = id;
+  $('h_mac').value = h.mac || '';
+  $('h_name').value = h.name || '';
+  $('h_user').value = h.user_id || '';
+  $('h_vars').value = (typeof h.vars === 'string') ? h.vars : (h.vars ? JSON.stringify(h.vars) : '{}');
+  $('h_bootmenu').checked = !!h.boot_to_menu;
+  $('h_submit').textContent = '保存修改';
+  $('h_mac').focus();
+}
+function resetHostForm(){
+  editingHostId = null;
+  $('h_mac').value=''; $('h_name').value=''; $('h_vars').value='';
+  $('h_bootmenu').checked=false;
+  $('h_submit').textContent='绑定';
+}
+function addUser(){
+  api('/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('u_name').value,token:$('u_token').value})}).then(loadAll);
+}
+function submitHost(){
+  if (!$('h_user').value){ alert('请先选择用户'); return; }
+  const payload = {mac:fmtMac($('h_mac').value),name:$('h_name').value,user_id:+$('h_user').value,vars:$('h_vars').value||'{}',boot_to_menu:$('h_bootmenu').checked};
+  if (editingHostId !== null) payload.id = editingHostId;
+  api('/hosts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(()=>{ resetHostForm(); loadAll(); });
+}
+function addInjection(){
+  const f = $('inj_file').files[0]; if(!f) return;
+  const fd = new FormData();
+  fd.append('iso_id', $('inj_isoid').value); fd.append('scope', $('inj_scope').value);
+  fd.append('owner_id', $('inj_owner').value); fd.append('image_path', $('inj_path').value); fd.append('file', f);
+  fetch('/api/injections',{method:'POST',body:fd}).then(r=>r.json()).then(x=>{alert(JSON.stringify(x));loadAll();});
+}
+
+function previewTemplate(id){
+  const t = templatesCache.find(x => x.id === id);
+  $('tpl_preview').textContent = t ? (t.body || '(该模板 body 为空，/boot 会渲染出空脚本)') : '(未找到模板)';
+}
+function editTemplate(id){
+  const t = templatesCache.find(x => x.id === id); if(!t) return;
+  editingId = id;
+  $('t_name').value = t.name || '';
+  $('t_scope').value = t.scope || 'public';
+  refreshOwnerSelect();
+  if (t.owner_id != null) $('t_owner').value = String(t.owner_id);
+  $('t_kind').value = t.kind || 'linux';
+  $('t_isoid').value = t.iso_id != null ? String(t.iso_id) : '';
+  $('t_body').value = t.body || '';
+  $('t_iscsi').value = t.iscsi_target || '';
+  $('t_initiator').value = t.initiator_iqn || '';
+  $('t_nfsroot').value = t.nfs_root || '';
+  $('t_nfsupper').value = t.nfs_upper || '';
+  $('tpl_preview').textContent = t.body || '(该模板 body 为空)';
+  $('tpl_submit').textContent = '保存修改';
+  $('tpl_cancel').style.display = '';
+}
+function cancelEdit(){
+  editingId = null;
+  ['t_name','t_body','t_iscsi','t_initiator','t_nfsroot','t_nfsupper'].forEach(k => $(k).value = '');
+  $('tpl_example').value = '';
+  $('tpl_hint').textContent = DEFAULT_TPL_HINT;
+  $('t_scope').value = 'public'; refreshOwnerSelect();
+  $('t_isoid').value = '';
+  $('tpl_submit').textContent = '添加模板';
+  $('tpl_cancel').style.display = 'none';
+  $('tpl_preview').textContent = '# 尚未选择模板';
+}
+function templatePayload(){
+  const scope = $('t_scope').value;
+  return {
+    name: $('t_name').value, scope,
+    owner_id: (scope === 'public' || !$('t_owner').value) ? null : +$('t_owner').value,
+    kind: $('t_kind').value,
+    iso_id: $('t_isoid').value ? +$('t_isoid').value : null,
+    body: $('t_body').value,
+    iscsi_target: $('t_iscsi').value || '',
+    initiator_iqn: $('t_initiator').value || '',
+    nfs_root: $('t_nfsroot').value || '',
+    nfs_upper: $('t_nfsupper').value || ''
+  };
+}
+function submitTemplate(){
+  const p = templatePayload();
+  if (!p.name){ alert('请填写模板名'); return; }
+  if (p.body.indexOf('{{.InitiatorIQN}}') >= 0 && !p.initiator_iqn){
+    alert('脚本使用了 {{.InitiatorIQN}}，请先在「Initiator IQN」框填写客户端名字。'); return;
+  }
+  let note = '';
+  if (p.initiator_iqn){
+    const added = ensureInitiatorLine(p);
+    note = added ? ('已自动在 sanhook/boot 前补入：' + added) : '脚本中已有 set initiator-iqn，将优先于上方字段值。';
+  }
+  const url = editingId ? '/templates?id=' + editingId : '/templates';
+  api(url, {method: editingId ? 'PUT' : 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(p)})
+    .then(x => {
+      if (x && x.error){ alert('保存失败: ' + x.error); return; }
+      cancelEdit();
+      if (note) $('tpl_hint').textContent = note + ' · 已保存';
+      return loadAll();
+    });
+}
+
+function isoStatus(msg){ $('iso_status').textContent = msg; }
+function showProgress(v){
+  const p = $('iso_progress');
+  p.style.display = v === null ? 'none' : '';
+  if (v !== null) p.value = v;
+}
+function importResultText(x){
+  if (!x || !x.iso) return '';
+  const dup = (x.duplicate_ids && x.duplicate_ids.length)
+    ? '；另有 ' + x.duplicate_ids.length + ' 条同名重复记录（#' + x.duplicate_ids.join('、#') + '），建议在列表中删除' : '';
+  if (x.action === 'created')   return '新增记录 #' + x.iso.id + dup;
+  if (x.action === 'updated')   return '已更新已有记录 #' + x.iso.id + '（内容变化，已重新解包；模板绑定保持不变）' + dup;
+  if (x.action === 'unchanged') return '内容与已有记录 #' + x.iso.id + ' 相同，跳过解包' + dup;
+  return '';
+}
+async function refreshISO(id){
+  isoStatus('正在重新读取服务器上的镜像文件并解包…');
+  try {
+    const r = await fetch('/api/isos/refresh?id=' + id, {method:'POST'});
+    const x = await r.json().catch(() => ({}));
+    if (!r.ok || x.error){ isoStatus('重新导入失败: ' + (x.error || ('HTTP ' + r.status))); return; }
+    isoStatus('重新导入完成: ' + (x.iso ? x.iso.name : ('#' + id)) + ' — ' + importResultText(x));
+    loadAll();
+  } catch(e){ isoStatus('重新导入失败: ' + e.message); }
+}
+async function delISO(id){
+  if (!confirm('确认删除该镜像记录？\n默认只删数据库记录，不删磁盘文件。')) return;
+  await deleteISORequest(id, '');
+}
+async function deleteISORequest(id, extra){
+  try {
+    const r = await fetch('/api/isos?id=' + id + extra, {method:'DELETE'});
+    const x = await r.json().catch(() => ({}));
+    if (r.status === 409){
+      const t = (x.templates || []).map(v => v.name || ('#' + v.id)).join('、') || '无';
+      const n = (x.injections || []).length;
+      if (confirm('该镜像仍被引用：\n模板：' + t + '\n注入：' + n + ' 条\n\n是否强制删除？（会解绑这些模板并删除注入记录）'))
+        return deleteISORequest(id, '&force=1');
+      return;
+    }
+    if (!r.ok || x.error){ isoStatus('删除失败: ' + (x.error || ('HTTP ' + r.status))); return; }
+    isoStatus('已删除 #' + id + (x.purged ? '（含磁盘文件与缓存）' : '（仅数据库记录）'));
+    loadAll();
+  } catch(e){ isoStatus('删除失败: ' + e.message); }
+}
+function importISO(){
+  const f = $('iso_file').files[0];
+  if (!f){ isoStatus('请先选择要上传的镜像文件'); return; }
+  const fd = new FormData(); fd.append('iso', f);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/isos/import');
+  xhr.upload.onprogress = e => {
+    if (!e.lengthComputable) return;
+    const pct = Math.round(e.loaded / e.total * 100);
+    showProgress(pct);
+    isoStatus(`上传中 ${pct}%（${(e.loaded/1048576).toFixed(1)} / ${(e.total/1048576).toFixed(1)} MB）`);
+  };
+  xhr.onload = () => {
+    showProgress(null);
+    let msg = '导入完成';
+    try { const r = JSON.parse(xhr.responseText); msg = r.error ? ('导入失败: ' + r.error) : ('导入完成: ' + (r.iso ? r.iso.name : '') + ' — ' + importResultText(r)); }
+    catch(e){ msg = '导入返回异常: HTTP ' + xhr.status; }
+    isoStatus(msg); loadAll();
+  };
+  xhr.onerror = () => { showProgress(null); isoStatus('上传失败：网络错误'); };
+  xhr.send(fd); showProgress(0); isoStatus('开始上传…');
+}
+function importISOPath(){
+  const p = $('iso_path').value.trim();
+  if (!p){ isoStatus('请填写服务器本地镜像全路径'); return; }
+  isoStatus('服务器正在读取并导入，请稍候…');
+  fetch('/api/isos/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p})})
+    .then(async r => {
+      const x = await r.json().catch(() => ({}));
+      if (!r.ok || x.error){ isoStatus('导入失败: ' + (x.error || ('HTTP ' + r.status))); return; }
+      isoStatus('导入完成: ' + (x.iso ? x.iso.name : p) + ' — ' + importResultText(x));
+      $('iso_path').value = ''; loadAll();
+    })
+    .catch(e => isoStatus('导入失败: ' + e.message));
+}
+function preview(){
+  const mac = fmtMac($('pv_mac').value), q = new URLSearchParams();
+  if (mac) q.set('mac', mac);
+  q.set('kind', $('pv_kind').value);
+  if ($('pv_template').value) q.set('template', $('pv_template').value);
+  // 按后端 handleBoot 规则：命中“启动到菜单”的主机时 /boot 会重定向到 /menu，
+  // 预览应展示真实菜单而非那条重定向；否则展示 /boot 启动脚本。
+  const host = mac ? hostsCache.find(x => x.mac === mac) : null;
+  const toMenu = !!(host && host.boot_to_menu);
+  const url = toMenu ? ('/menu?' + new URLSearchParams({mac: mac})) : ('/api/boot-preview?' + q.toString());
+  const label = toMenu ? '/menu' : '/boot';
+  $('pv_out').textContent = '正在请求 ' + label + (toMenu ? '（该主机已开启启动到菜单）…' : ' …');
+  if ($('pv_btn')) $('pv_btn').textContent = '预览 ' + label;
+  fetch(url)
+    .then(async r => {
+      const t = await r.text();
+      $('pv_out').textContent = t.trim() ? t : '（后端返回空脚本）可能原因：命中的模板 body 为空，或模板未绑定 ISO。请到「模板」页点「预览」确认 body，并绑定 ISO。';
+    })
+    .catch(e => { $('pv_out').textContent = '预览请求失败: ' + e.message; });
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  ['users','hosts','templates','isos','injections'].forEach(t => $('panel-'+t).style.display = (t === b.dataset.t) ? 'block' : 'none');
+});
+$('t_scope').onchange = () => { $('t_owner').value = ''; refreshOwnerSelect(); };
+initExampleSelect();
+loadAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# 构建上下文忽略项（减小镜像、避免把运行时/工具链 bake 进镜像）
+
+# 版本控制与本地工具链
+.git
+.gotool
+.workbuddy
+.diag
+
+# 运行时数据（DB / 上传 ISO / 缓存 / overlay / PE），应走卷挂载
+data
+
+# 预编译二进制（构建产物，镜像内重新编译生成）
+ipxe-server
+ipxe-server.exe
+ipxe-server.linux
+*.exe
+
+# 自身文件
+Dockerfile
+docker-compose.yaml
+.dockerignore

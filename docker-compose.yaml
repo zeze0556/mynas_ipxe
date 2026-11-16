@@ -1,0 +1,30 @@
+# iPXE 网络启动服务 —— Docker Compose 部署（目标方案）
+#
+# 关键约束（PXE 广播）：
+#   TFTP(:69) 与 DHCP(:67) 依赖局域网广播，客户端通过 DHCP 的 next-server
+#   直接访问服务器。Docker bridge 网络不通广播，因此必须 network_mode: host，
+#   让容器直接复用宿主机网络栈。
+#
+# 重要限制：
+#   network_mode: host 仅在 **Linux 上的 Docker 引擎** 生效。
+#   Windows / macOS 的 Docker Desktop 不支持 host 网络，无法用于真实 PXE 启动
+#   （容器拿不到宿主机的 LAN 网卡）。在此类环境下请改用裸二进制部署。
+#
+# 部署前：
+#   1. cp config.example.yaml config.yaml
+#   2. 编辑 config.yaml，将 next_server 改为宿主机局域网 IP（如 192.168.1.10）
+#   3. docker compose up -d --build
+
+services:
+  ipxe-server:
+    build: .
+    image: ipxe-server:latest
+    container_name: ipxe-server
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      # 配置只读挂载：服务启动时会把合并后的配置写回，read-only 避免覆盖宿主配置注释。
+      - ./config.yaml:/app/config.yaml:ro
+      # 运行时数据（SQLite DB / 上传的 isos / cache / overlay / PE 支撑目录），必须持久化。
+      - ./data:/app/data
+    # host 模式无 ports 映射（直接占用宿主机 69/udp、67/udp、8080/tcp）。

@@ -1,0 +1,21 @@
+# 运行数据
+/data/
+/data_test/
+*.db
+
+# AI 工作记忆（会话日志/技术约定，非交付物）
+/.workbuddy/
+
+# 构建产物
+/ipxe-server
+/ipxe-server.exe
+/ipxe-server.linux
+
+# 隔离 Go 工具链（按需安装，勿提交）
+/.gotool/
+
+# iPXE 源码目录（固件二进制 assets/ipxe/ 随仓库提供）
+/ipxe/
+
+# 本地调试产物（iso_b64/iso9660dbg/alpine.iso 等，非交付物）
+/.diag/

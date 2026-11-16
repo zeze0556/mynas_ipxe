@@ -1,0 +1,147 @@
+# iPXE 网络启动服务 —— 容器部署示例配置
+# 复制为 config.yaml 后修改；重点：next_server 必须指向宿主机局域网 IP。
+
+# HTTP 监听地址与端口（容器内；host 网络下即宿主机端口）
+http_listen: ":8080"
+# 用于拼接 boot/content 等 URL 的端口，需与实际对外暴露端口一致
+http_port: 8080
+
+# TFTP 监听地址（下发 iPXE NBP），host 网络下为宿主机 :69
+tftp_listen: ":69"
+
+# 数据根目录（容器内路径，由 compose 挂载 ./data 持久化）
+data_dir: "data"
+# SQLite 文件路径；留空则用 data_dir/server.db
+db_path: ""
+
+# 通告给客户端的服务器 IP（DHCP next-server / boot URL 主机）。
+# ★ 必须改为宿主机在 PXE 客户端所在网段的局域网 IP，不能是 0.0.0.0 / 127.0.0.1。
+next_server: "192.168.1.10"
+
+# iPXE 二进制与 Web 静态资源目录（容器内路径，镜像内已自带）
+assets_dir: "assets"
+
+# PE 支撑文件目录（wimboot / bootmgr.exe / boot/bcd / boot/boot.sdi），WIM 启动必需。
+# 容器内默认 data/pe；将宿主机 data/pe 放好 4 个文件即可（见 docs/PE支撑文件清单.md）。
+pe_support_dir: "data/pe"
+
+# 未绑定 MAC 是否拒绝启动（false=允许公共模板）
+deny_unknown_mac: false
+
+# 内置 DHCP（可选）：
+#   - 若网络已有 DHCP 服务器：保持 enabled:false，并在那台服务器上
+#     设置 next-server=<宿主机IP>、boot file=undionly.kpxe（BIOS）/ ipxe.efi（UEFI）。
+#   - 若由本服务充当 DHCP：enabled:true，并填好地址池与网关。
+dhcp:
+  enabled: false
+  listen: ":67"
+  range_start: "192.168.1.100"
+  range_end: "192.168.1.200"
+  netmask: "255.255.255.0"
+  router: "192.168.1.1"
+  boot_file: "undionly.kpxe"
+  boot_file_bios: "undionly.kpxe"
+  boot_file_efi: "ipxe.efi"
+  boot_file_arm64: "ipxe-arm64.efi"
+  lease_time: 3600
+
+# ============================================================
+# 两级 iPXE 启动菜单（menu）—— 配置说明
+# ============================================================
+# 作用：替代单模板 /boot，给客户端一个「分类 -> 版本」两级选择菜单。
+#
+# ── 如何进入菜单模式（切换菜单）──────────────────────────────
+#   ① 全局开关：本段 enabled: true 时，任何客户端访问 /menu 都会得到菜单；
+#      enabled: false 时 /menu 退化为单模板 /boot（向后兼容、零破坏）。
+#   ② 按主机开关：在「主机管理」页把某主机的「启动到菜单」打开
+#      （即 DB 的 host.boot_to_menu = true）。该主机的 /boot 请求会被服务端
+#      重定向到 /menu?mac=<mac>，从而进入菜单模式；未开启的主机仍走原 /boot。
+#      （客户端入口 URL /boot 固化在 ipxe.efi 内嵌脚本里，无需重编固件即可
+#       按主机灰度引流到菜单。）
+#
+# ── 菜单结构 与 默认自动启动项 是两回事（重要！）──────────────
+#   • 本 menu 段只定义「可导航的菜单骨架」：categories 下的一级分类，以及每个
+#     分类下的 items；每个 item 通过 template 字段引用 DB 中「已存在」的
+#     Template 名称（如 public-linux / public-windows）。在菜单里手动选某项时，
+#     就渲染该项引用的模板。
+#   • 「倒计时后自动启动的那一项（预选项）」并不来自本 menu 段，而是由服务端按
+#     host > user > public 优先级解析出的模板决定的：
+#        - 已知 MAC 且主机/用户绑定了专属模板 -> 用该模板；
+#        - 否则回退 public 模板，默认取优先级最高的 public 模板
+#          （开箱即用默认是 public-linux）。
+#      => 这正是「切换到菜单后默认用 public-linux」的原因：它不是 menu 段里的
+#        某项，而是模板优先级解析的默认结果。
+#     想改变默认值：给该主机/用户分配专属模板，或调整 public 模板的 priority。
+#
+# ── 字段说明 ────────────────────────────────────────────────
+#   enabled            : 是否启用菜单（false = 退化为 /boot）
+#   countdown_seconds  : 已知 MAC 匹配到模板后自动进入该模板的倒计时秒数；
+#                        0 = 只预选、不自动启动，等待人工确认
+#   categories[].id    : 一级分类标识（同时作 iPXE 跳转标签，用字母数字/下划线）
+#   categories[].name  : 一级分类显示名
+#   categories[].items[].id      : 二级项标识（iPXE 跳转标签）
+#   categories[].items[].name    : 二级项显示名
+#   categories[].items[].template: 必须指向 DB 中已存在的 Template 名称
+# ============================================================
+menu:
+  enabled: true
+  countdown_seconds: 10
+  categories:
+    - id: linux
+      name: Linux
+      items:
+        - id: ubuntu2604
+          name: Ubuntu 26.04
+          template: public-linux
+        - id: debian13
+          name: Debian 13
+          template: public-linux
+        - id: mynas_live
+          name: mynas live
+          template: public-linux
+        - id: stalize
+          name: Stalize
+          template: public-linux
+        - id: tinylinux
+          name: TinyLinux
+          template: public-linux
+        - id: openwrt
+          name: OpenWrt (disk img)
+          template: public-raw
+    - id: windows
+      name: Windows
+      items:
+        - id: win10
+          name: Windows 10
+          template: public-windows
+        - id: win11
+          name: Windows 11
+          template: public-windows
+        - id: install
+          name: 手动安装
+          template: public-windows
+        - id: autoinstall
+          name: 一键自动安装
+          template: public-wim
+    - id: winpe
+      name: Windows PE
+      items:
+        - id: winpe1
+          name: WinPE 1 (ISO)
+          template: public-wim
+        - id: winpe2
+          name: WinPE 2 (ISO)
+          template: public-wim
+        - id: vhd
+          name: VHD 启动
+          template: public-wim
+    - id: utils
+      name: 工具类
+      items:
+        - id: diskgen
+          name: DiskGenius
+          template: public-raw
+        - id: memtest
+          name: MemTest
+          template: public-raw
+

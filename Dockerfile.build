@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+# 一键构建镜像：内含 iPXE 固件编译 + Go 后端编译所需全部工具链
+# 用法：docker compose -f docker-compose.build.yml run --rm builder
+FROM golang:1.23-bookworm
+
+# iPXE 固件构建硬依赖：gcc / make / binutils(objcopy,ld,as) / git
+# 现代 Debian gcc 默认开启 PIE，而 iPXE 实模式/内核态代码要求 non-PIC，
+# 否则报 "code model kernel does not support PIC mode"。用 wrapper 强制关闭。
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential binutils git liblzma-dev libssl-dev perl gcc-multilib libc6-dev-i386 ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /opt/nopie \
+ && printf '#!/bin/sh\nexec /usr/bin/gcc -fno-pic -fno-pie -no-pie "$@"\n' > /opt/nopie/gcc \
+ && printf '#!/bin/sh\nexec /usr/bin/cc  -fno-pic -fno-pie -no-pie "$@"\n' > /opt/nopie/cc \
+ && chmod +x /opt/nopie/gcc /opt/nopie/cc
+
+WORKDIR /work

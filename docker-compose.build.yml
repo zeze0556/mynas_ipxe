@@ -1,0 +1,28 @@
+# 一键构建环境：在 build-host 上执行
+#   docker compose -f docker-compose.build.yml run --rm builder
+# 自动完成：
+#   1) 克隆并编译 iPXE 固件 (HTTP 端口 10180) -> ./assets/ipxe/
+#   2) 编译 Go 后端 linux/amd64 静态二进制 -> ./ipxe-server.linux
+# 构建产物直接落在挂载的项目目录，便于后续部署到 deploy-target。
+# arm64 固件因容器缺 aarch64 交叉编译器会自动跳过（符合当前需求）。
+services:
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    image: ipxe-buildenv:local
+    volumes:
+      - .:/work
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        export PATH=/opt/nopie:$$PATH
+        echo "==> [1/2] 构建 iPXE 固件 (PORT=10180)"
+        ./build_ipxe.sh 10180
+        cp -v /tmp/ipxebuild/assets/ipxe/* /work/assets/ipxe/
+        echo "==> [2/2] 编译 Go 后端 (linux/amd64, CGO_ENABLED=0)"
+        CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags="-s -w" -o /work/ipxe-server.linux ./cmd/server
+        echo "==> 构建完成："
+        ls -lh /work/assets/ipxe/ /work/ipxe-server.linux

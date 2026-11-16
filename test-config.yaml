@@ -1,0 +1,17 @@
+tftp_listen: :69
+http_listen: :18080
+http_port: 18080
+dhcp:
+    enabled: false
+    listen: :67
+    range_start: 192.168.1.100
+    range_end: 192.168.1.200
+    netmask: 255.255.255.0
+    router: 192.168.1.1
+    boot_file: undionly.kpxe
+    lease_time: 3600
+data_dir: ./data_test
+db_path: data_test\server.db
+next_server: 127.0.0.1
+assets_dir: assets
+deny_unknown_mac: false
